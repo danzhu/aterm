@@ -1,0 +1,17 @@
+body {
+    /* background: black; */
+    color: white;
+}
+
+input {
+    border: none;
+    background-color: transparent;
+    color: inherit;
+    font-family: monospace;
+    outline: none;
+    width: 100%;
+}
+
+pre {
+    margin: 0;
+}

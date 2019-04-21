@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'nonce-load'">
+    <title>Terminal</title>
+    <link rel="stylesheet" href="style.css" type="text/css" />
+  </head>
+  <body>
+    <div id="output"></div>
+    <input id="input" autofocus>
+    <button id="devtools">Dev Tools</button>
+    <script nonce="load">window.onload = require('./dist/script.js')</script>
+  </body>
+</html>

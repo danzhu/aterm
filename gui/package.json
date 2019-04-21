@@ -1,0 +1,9 @@
+{
+    "scripts": {
+        "build": "tsc",
+        "start": "npm run build && electron ./dist/main.js"
+    },
+    "dependencies": {
+        "@types/electron": "^1.6.10"
+    }
+}

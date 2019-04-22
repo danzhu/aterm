@@ -5,11 +5,15 @@
           content="default-src 'self'; script-src 'nonce-load'">
     <title>Terminal</title>
     <link rel="stylesheet" href="style.css" type="text/css" />
+    <script nonce="load">
+     const Main = require('./dist/script.js')
+     const main = new Main()
+     window.onload = () => main.run()
+    </script>
   </head>
   <body>
     <div id="output"></div>
     <input id="input" autofocus>
     <button id="devtools">Dev Tools</button>
-    <script nonce="load">window.onload = require('./dist/script.js')</script>
   </body>
 </html>

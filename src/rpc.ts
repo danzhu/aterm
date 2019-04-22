@@ -11,7 +11,7 @@ export interface Handler {
 }
 
 export interface Server {
-    [prop: string]: Handler | undefined
+    [method: string]: Handler | undefined
 }
 
 interface Request {
@@ -57,7 +57,7 @@ export class Rpc {
     }
 
     async handle(line: string) {
-        let msg_id: string | undefined
+        let msg_id: string | null = null
         try {
             const msg = JSON.parse(line)
             if (typeof msg !== 'object' || msg === null)
@@ -91,7 +91,7 @@ export class Rpc {
             if (error instanceof SyntaxError)
                 return
             if (error instanceof RpcError) {
-                if (msg_id !== undefined)
+                if (msg_id !== null)
                     this.error(msg_id, error.message)
                 return
             }

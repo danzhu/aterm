@@ -1,5 +1,3 @@
-#!/usr/bin/env ts-node
-
 import * as child_process from 'child_process'
 import * as net from 'net'
 import * as process from 'process'
@@ -10,8 +8,13 @@ const main = async () => {
         input(rpc: Rpc, { text }: Msg<'text'>) {
             if (typeof text !== 'string')
                 throw new RpcError('expect string text')
+
             rpc.request('log', { text })
             const [cmd, ...args] = text.split(' ')
+
+            if (cmd === 'exit')
+                process.exit()
+
             const proc = child_process.spawn(cmd, args)
             proc.on('error', err => {
                 rpc.request('log', { text: `Error: ${err.message}` })

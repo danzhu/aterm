@@ -15,20 +15,7 @@ const main = async () => {
             if (cmd === 'exit')
                 process.exit()
 
-            const proc = child_process.spawn(cmd, args)
-            proc.on('error', err => {
-                rpc.request('log', { text: `Error: ${err.message}` })
-            })
-            proc.stdout.on('data', (data: Buffer) => {
-                rpc.request('log', { text: data.toString() })
-            })
-            proc.stderr.on('data', (data: Buffer) => {
-                rpc.request('log', { text: data.toString() })
-            })
-            proc.on('exit', (code, _signal) => {
-                const text = `[exit: ${code}]`
-                rpc.request('log', { text })
-            })
+            rpc.request('spawn', { cmd, args })
         }
     }
 

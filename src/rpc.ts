@@ -1,4 +1,3 @@
-import * as assert from 'assert'
 import * as net from 'net'
 
 export type Any = number | string | boolean | symbol | object | null | undefined
@@ -7,7 +6,7 @@ export type Msg<K extends keyof any> = {
 }
 
 export interface Handler {
-    (rpc: Rpc, args: object): Promise<object> | void
+    (rpc: Rpc, args: object): PromiseLike<object> | void
 }
 
 export interface Server {
@@ -49,8 +48,8 @@ export class Rpc {
         this.buffer += data.toString()
         const lines = this.buffer.split('\n')
         if (lines.length === 0)
-            return
-        this.buffer = lines.pop() as string
+            throw 'split returns empty array'
+        this.buffer = lines.pop()!
         for (const line of lines) {
             this.handle(line)
         }
@@ -101,7 +100,8 @@ export class Rpc {
 
     send(msg: Outgoing) {
         const data = JSON.stringify(msg)
-        assert(data.indexOf('\n') == -1)
+        if (data.indexOf('\n') !== -1)
+            throw 'json contains newline'
         this.connection.write(data + '\n')
     }
 

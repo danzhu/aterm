@@ -1,4 +1,3 @@
-import * as assert from 'assert'
 import * as child_process from 'child_process'
 import * as events from 'events'
 import * as net from 'net'
@@ -24,7 +23,7 @@ function once(emitter: events.EventEmitter, event: string | symbol): Promise<any
     })
 }
 
-class Sync<T> {
+class Sync<T> implements PromiseLike<T> {
     value: Promise<T>
     resolve!: (value?: T | PromiseLike<T>) => void
     reject!: (reason?: any) => void
@@ -35,32 +34,45 @@ class Sync<T> {
             this.reject = reject
         })
     }
+
+    then<TResult1 = T, TResult2 = never>(
+        onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | null | undefined,
+        onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined)
+        : PromiseLike<TResult1 | TResult2> {
+        return this.value.then(onfulfilled, onrejected)
+    }
 }
 
 export = class Main {
+    output = document.getElementById('output') as HTMLDivElement
+    input = document.getElementById('input') as HTMLInputElement
+    devtools = document.getElementById('devtools') as HTMLButtonElement
+
     win = remote.getCurrentWindow()
     rpc_dir: string | null = null
     shutting_down = false
-    proc: child_process.ChildProcess | null = null
+    procs: Set<child_process.ChildProcess> = new Set()
     connection: net.Server | null = null
+    env: NodeJS.ProcessEnv | null = null
 
     proc_sync = new Sync()
     conn_sync = new Sync()
 
     async run() {
-        const output = document.getElementById('output') as HTMLDivElement
-        const input = document.getElementById('input') as HTMLInputElement
-        const devtools = document.getElementById('devtools') as HTMLButtonElement
-
+        const self = this
         const rpc_server = {
             log(_rpc: Rpc, { text }: Msg<'text'>) {
                 if (typeof text !== 'string')
                     throw new RpcError('expect string text')
-                const element = document.createElement('pre')
-                element.textContent = text
-                output.appendChild(element)
-                input.scrollIntoView()
-            }
+                self.log(text)
+            },
+            spawn(_rpc: Rpc, { cmd, args }: Msg<'cmd' | 'args'>) {
+                if (typeof cmd !== 'string')
+                    throw new RpcError('expect string cmd')
+                if (!Array.isArray(args))
+                    throw new RpcError('expect string cmd')
+                self.spawn(cmd, args)
+            },
         }
 
         window.onbeforeunload = e => {
@@ -71,21 +83,22 @@ export = class Main {
                 this.win.destroy()
         }
 
-        const remote_process: NodeJS.Process = remote.process
-        assert(remote_process !== undefined)
+        const remote_process: NodeJS.Process | undefined = remote.process
+        if (remote_process === undefined)
+            throw 'remote_process undefined'
 
-        devtools.onclick = () => this.win.webContents.openDevTools()
+        this.devtools.onclick = () => this.win.webContents.openDevTools()
 
         this.rpc_dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aterm_'))
         const rpc_path = path.join(this.rpc_dir, 'tty')
         this.connection = net.createServer(socket => {
             const rpc = new Rpc(socket, rpc_server)
 
-            input.onkeypress = e => {
+            this.input.onkeypress = e => {
                 if (e.key !== 'Enter')
                     return
-                rpc.request('input', { text: input.value })
-                input.value = ''
+                rpc.request('input', { text: this.input.value })
+                this.input.value = ''
             }
         })
         this.connection.listen(rpc_path)
@@ -96,37 +109,65 @@ export = class Main {
         await once(this.connection, 'listening')
         console.log(`listening on ${rpc_path}`)
 
-        const env = remote_process.env
-        env.ATERM = rpc_path
+        this.env = remote_process.env
+        this.env.ATERM = rpc_path
 
         // electron main [cmd args...]
         const [, , cmd, ...args] = remote_process.argv
-        if (cmd !== undefined) {
-            this.proc = child_process.spawn(cmd, args, { env })
-            this.proc.stdout!.on('data', console.log)
-            this.proc.stderr!.on('data', console.log)
-            this.proc.on('error', console.log)
-            this.proc.on('exit', (_code, _signal) => {
-                this.proc = null
-                this.proc_sync.resolve()
-                this.shutdown()
-            })
-        }
+        if (cmd !== undefined)
+            this.spawn(cmd, args)
+    }
 
+    log(text: string) {
+        const element = document.createElement('pre')
+        element.textContent = text
+        this.output.appendChild(element)
+        this.input.scrollIntoView()
+    }
+
+    spawn(cmd: string, args: string[]) {
+        if (this.env === null)
+            throw 'null env'
+        const proc = child_process.spawn(cmd, args, {
+            env: this.env,
+            stdio: ['ignore', 'pipe', 'pipe'],
+        })
+        this.procs.add(proc)
+        const log = (data: Buffer) => this.log(data.toString())
+        const done = () => {
+            this.procs.delete(proc)
+            if (this.procs.size !== 0)
+                return
+            this.proc_sync.resolve()
+            this.shutdown()
+        }
+        proc.stdout!.on('data', log)
+        proc.stderr!.on('data', log)
+        proc.on('error', err => {
+            this.log(`[${err}]`)
+            done()
+        })
+        proc.on('exit', (code, _signal) => {
+            this.log(`[exit ${code}]`)
+            done()
+        })
     }
 
     async shutdown() {
         if (this.shutting_down)
             return
         this.shutting_down = true
-        if (this.proc !== null)
-            this.proc.kill()
+
         if (this.connection !== null)
             this.connection.close()
-        await this.proc_sync.value
-        await this.conn_sync.value
+        for (const proc of this.procs)
+            proc.kill()
+
+        await this.conn_sync
         if (this.rpc_dir !== null)
             await fs.rmdir(this.rpc_dir)
+        await this.proc_sync
+
         this.win.destroy()
     }
 }

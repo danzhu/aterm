@@ -125,7 +125,7 @@ export = class Main {
         this.input.scrollIntoView()
     }
 
-    spawn(cmd: string, args: string[]) {
+    spawn(cmd: string, args: readonly string[]) {
         if (this.env === null)
             throw 'null env'
         const proc = child_process.spawn(cmd, args, {

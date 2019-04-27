@@ -58,7 +58,7 @@ export class Rpc {
     async handle(line: string) {
         let msg_id: string | null = null
         try {
-            const msg = JSON.parse(line)
+            const msg: Any = JSON.parse(line)
             if (typeof msg !== 'object' || msg === null)
                 throw new RpcError('expect object message')
             const { id, method, args, result, error }: Incoming = msg

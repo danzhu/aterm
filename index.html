@@ -7,13 +7,13 @@
     <link rel="stylesheet" href="style.css" type="text/css" />
   </head>
   <body>
+    <button id="devtools">Dev Tools</button>
     <div id="output"></div>
     <input id="input" autofocus>
-    <button id="devtools">Dev Tools</button>
     <script nonce="load">
-     const Main = require('./dist/script.js')
-     const main = new Main()
-     window.onload = () => main.run()
+     const GUI = require('./dist/gui.js').GUI
+     const gui = new GUI()
+     gui.run()
     </script>
   </body>
 </html>

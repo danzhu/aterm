@@ -1,10 +1,11 @@
 {
     "scripts": {
         "build": "tsc",
-        "start": "npm run build && electron dist/main.js"
+        "start": "npm run build && electron --no-sandbox dist/main.js --",
+        "shell": "npm start -- node dist/shell.js"
     },
     "devDependencies": {
         "@types/node": "^11.13.6",
-        "electron": "^4.1.4"
+        "electron": "^5.0.0"
     }
 }
